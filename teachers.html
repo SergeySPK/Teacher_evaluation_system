@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Преподаватели</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background-color: #F5F6FA; font-size: 18px; }
+
+        header {
+            width: 100%; background-color: #FFFFFF; padding: 16px 32px;
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 18px; position: fixed; top: 0; left: 0; right: 0;
+            z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); gap: 12px;
+        }
+        .header-left-active {
+            color: #232320; font-weight: bold; position: relative;
+            display: inline-block; cursor: pointer; white-space: nowrap;
+        }
+        .header-left-active::after {
+            content: ""; position: absolute; left: 0; bottom: -3px;
+            width: 100%; height: 2px; background-color: #0D51F8;
+        }
+        .header-left button, .header-left-active {
+            background: transparent; border: none; font-size: 18px; cursor: pointer;
+        }
+        .header-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+        .header-right .teachers-fio {
+            color: #232320; position: relative; display: inline-block;
+            cursor: pointer; white-space: nowrap;
+        }
+        .header-right img { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; flex-shrink: 0; }
+
+        /* ── LIST MODE: teachers list ── */
+        .teachers-list-content {
+            max-width: 900px; margin: 80px auto 40px -10px; padding: 0 20px; font-size: 20px;
+        }
+        .teachers-toggle {
+            background-color: #D9D9D9; border: none; border-radius: 27px;
+            padding: 16px 24px; display: flex; align-items: center;
+            justify-content: space-between; cursor: pointer; font-size: 18px;
+            width: {{ teachers_btn_width }}px; max-width: calc(100vw - 40px);
+            margin-bottom: 12px; transition: all 0.3s ease;
+        }
+        .teachers-toggle:hover { background-color: #CCCCCC; }
+        .teachers-text { color: #232320; background: transparent; }
+        .chevron-icon { width: 20px; height: 20px; transition: transform 0.3s ease; flex-shrink: 0; }
+        .chevron-icon.rotated { transform: rotate(180deg); }
+        .teachers-list {
+            background-color: #FFFFFF; border-radius: 12px; padding: 24px;
+            max-height: 0; width: {{ teachers_btn_width }}px; max-width: calc(100vw - 40px);
+            overflow-y: auto; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0;
+            pointer-events: none;
+        }
+        .teachers-list.show {
+            max-height: 800px; width: {{ teachers_btn_width }}px;
+            max-width: calc(100vw - 40px); opacity: 1; padding: 24px; pointer-events: auto;
+        }
+        .teacher-item {
+            padding: 12px 16px; color: #232320; font-size: 18px;
+            border-bottom: 1px solid #F0F0F0; background: none; border: none;
+            width: 100%; text-align: left; cursor: pointer; transition: background-color 0.2s;
+        }
+        .teacher-item:hover { background-color: #F8F9FF; }
+        .teacher-item.selected { color: #0D51F8; font-weight: bold; }
+        .teacher-item:last-child { border-bottom: none; }
+
+        /* ── DETAIL MODE: criteria ── */
+        .criteria-content {
+            max-width: 900px; margin: 80px auto 40px -10px;
+            padding: 0 20px; font-size: 20px; position: relative;
+        }
+        .teachers-section { margin-bottom: 12px; position: relative; }
+        .teachers-dropdown-list {
+            background-color: #FFFFFF; border-radius: 12px; padding: 24px;
+            max-height: 0; width: {{ teachers_btn_width }}px; max-width: calc(100vw - 40px);
+            overflow-y: auto; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0; pointer-events: none; position: absolute;
+            top: calc(100% + 12px); left: 0; z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .teachers-dropdown-list.show {
+            max-height: 800px; width: {{ teachers_btn_width }}px;
+            max-width: calc(100vw - 40px); opacity: 1; padding: 24px; pointer-events: auto;
+        }
+        .subject-section { margin-top: 12px; margin-bottom: 24px; max-width: 66.666vw; }
+        .subject-block {
+            background-color: #D9D9D9; border-radius: 12px; padding: 20px 24px;
+            text-align: center; color: #000000; font-size: 20px; font-weight: bold;
+            width: 100%; height: 64px; display: flex; align-items: center; justify-content: center;
+        }
+        .subjects-buttons { display: flex; gap: 12px; margin-bottom: 12px; max-width: 66.666vw; }
+        .subject-btn {
+            background-color: #D9D9D9; border: none; border-radius: 12px; color: #000000;
+            font-size: 16px; cursor: pointer; flex: 1; min-width: 0; padding: 12px 16px;
+            text-align: center; transition: background-color 0.3s; min-height: 48px;
+            display: flex; align-items: center; justify-content: center; word-break: break-word;
+        }
+        .subject-btn:hover { background-color: #CCCCCC; }
+        .subject-btn.active { background-color: #FFFFFF; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .criteria-section { margin-top: 24px; }
+        .criteria-row { display: flex; flex-direction: column; padding-bottom: 24px; max-width: 66.666vw; }
+        .criteria-pair { display: flex; gap: 24px; width: 100%; align-items: stretch; }
+        .criterion-wrapper {
+            flex: 1; max-width: calc(50% - 12px);
+            display: flex; flex-direction: column; gap: 0; position: relative;
+        }
+        .criteria-container { display: flex; gap: 0; align-items: stretch; cursor: pointer; }
+        .criteria-btn {
+            background-color: #D9D9D9; border: none; border-radius: 12px 0 0 12px;
+            color: #000000; font-size: 16px; flex: 1; padding: 12px 14px;
+            text-align: center; transition: background-color 0.3s;
+            display: flex; align-items: center; justify-content: center;
+            min-width: 0; width: 100%; height: auto; line-height: 1.3;
+            white-space: normal; min-height: 52px;
+        }
+        .criteria-btn:hover { background-color: #CCCCCC; }
+        .grades-btn {
+            background-color: #FFFFFF; border: 1px solid #E0E0E0; border-left: none;
+            border-radius: 0 12px 0 0; color: #232320; font-size: 16px; font-weight: bold;
+            padding: 12px 14px; text-align: center; display: flex;
+            align-items: center; justify-content: center; width: 70px;
+            height: 100%; flex-shrink: 0; transition: all 0.3s ease;
+        }
+        .grades-btn:hover { background-color: #F8F9FF; }
+        .grades-btn.selected { background-color: #0D51F8; color: white; border-color: #0D51F8; }
+        .grades-list {
+            background-color: #FFFFFF; border: 1px solid #E0E0E0;
+            border-radius: 0 0 12px 12px; padding: 0; max-height: 0; width: 70px;
+            overflow-y: auto; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0; pointer-events: none; position: absolute; top: 100%;
+            left: 0; right: 0; margin: 0 auto; margin-right: 0;
+            z-index: 200; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .grades-list.show { max-height: 180px; opacity: 1; padding: 12px; pointer-events: auto; }
+        .grade-item {
+            padding: 8px 12px; color: #232320; font-size: 16px;
+            border-bottom: 1px solid #F0F0F0; background: none; border: none;
+            width: 100%; text-align: center; cursor: pointer;
+            transition: background-color 0.2s; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .grade-item:hover { background-color: #F8F9FF; }
+        .grade-item:last-child { border-bottom: none; }
+        .grade-item.empty::before { content: ""; }
+        .save-section { margin-top: 24px; display: flex; justify-content: flex-start; }
+        .save-btn {
+            padding: 14px; font-size: 18px; color: #000000;
+            background-color: #FAD84B; border: none; border-radius: 100px;
+            cursor: pointer; transition: background-color 0.3s;
+            width: 140px; opacity: 0.5; pointer-events: none;
+        }
+        .save-btn.active { opacity: 1; pointer-events: auto; }
+        .save-btn:hover { background-color: #F0C93B; }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            header { padding: 14px 20px; }
+            .header-left button, .header-left-active { font-size: 16px; }
+            .header-right .teachers-fio { font-size: 15px; }
+            .header-right { gap: 10px; }
+            .teachers-list-content { margin: 74px 16px 40px 16px; padding: 0; font-size: 17px; }
+            .criteria-content { margin: 74px 16px 40px 16px; padding: 0; font-size: 17px; }
+            .teachers-toggle { font-size: 16px; padding: 14px 18px; }
+            .teacher-item { font-size: 16px; }
+            .subject-section { max-width: 100%; }
+            .subjects-buttons { max-width: 100%; }
+            .subject-btn { font-size: 15px; }
+            .subject-block { font-size: 17px; }
+            .criteria-row { max-width: 100%; }
+            .criteria-btn { font-size: 14px; }
+            .grades-btn { width: 58px; font-size: 14px; }
+            .grades-list { width: 58px; }
+            .save-btn { font-size: 16px; width: 130px; }
+        }
+        @media (max-width: 600px) {
+            .criteria-pair { flex-direction: column; gap: 12px; }
+            .criterion-wrapper { max-width: 100%; }
+        }
+        @media (max-width: 480px) {
+            header { padding: 12px 14px; gap: 8px; }
+            .header-left button, .header-left-active { font-size: 14px; }
+            .header-right .teachers-fio { font-size: 13px; }
+            .header-right img { width: 26px; height: 26px; }
+            .header-right { gap: 8px; }
+            .teachers-list-content { margin: 64px 12px 40px 12px; font-size: 15px; }
+            .criteria-content { margin: 64px 12px 40px 12px; font-size: 15px; }
+            .teachers-toggle { font-size: 15px; padding: 12px 16px; }
+            .teacher-item { font-size: 15px; padding: 10px 14px; }
+            .subject-btn { font-size: 13px; padding: 10px 12px; }
+            .subject-block { font-size: 15px; height: auto; min-height: 52px; padding: 14px 16px; }
+            .criteria-btn { font-size: 13px; padding: 10px; }
+            .grades-btn { width: 50px; font-size: 13px; }
+            .grades-list { width: 50px; }
+            .grade-item { font-size: 13px; height: 36px; }
+            .save-btn { font-size: 14px; width: 120px; padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <button class="header-left-active" onclick="goToTeachers()">Преподаватели</button>
+        </div>
+        <div class="header-right" onclick="goToProfile()">
+            <span class="teachers-fio">{{ fio }}</span>
+            <img src="https://myband.ru/img/noavatar.png" alt="Аккаунт">
+        </div>
+    </header>
+
+    {% if mode == 'list' %}
+    {# ─── LIST MODE: just the teachers dropdown ─── #}
+    <div class="teachers-list-content">
+        <button class="teachers-toggle" id="teachersToggle" onclick="toggleTeachers()">
+            <span class="teachers-text">Преподаватели</span>
+            <img class="chevron-icon" src="https://cdn1.iconfinder.com/data/icons/education-set-7/512/arrow1-down-512.png" alt="▼">
+        </button>
+        <div class="teachers-list" id="teachersList">
+            {% for teacher in teachers %}
+                <button class="teacher-item" onclick="selectTeacher('{{ teacher.teacher | replace(' ', '_') }}')">
+                    {{ teacher.teacher }}
+                </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% else %}
+    {# ─── DETAIL MODE: dropdown + subjects + criteria ─── #}
+    <div class="criteria-content">
+        <div class="teachers-section">
+            <button class="teachers-toggle" id="teachersToggle" onclick="toggleTeachers()">
+                <span class="teachers-text">{{ display_teacher }}</span>
+                <img class="chevron-icon" src="https://cdn1.iconfinder.com/data/icons/education-set-7/512/arrow1-down-512.png" alt="▼">
+            </button>
+            <div class="teachers-dropdown-list" id="teachersList">
+                {% for teacher in all_teachers %}
+                    <button class="teacher-item {% if teacher == display_teacher %}selected{% endif %}"
+                            onclick="selectTeacher('{{ teacher | replace(' ', '_') }}')">{{ teacher }}</button>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if page_type == 'single' and current_subject %}
+            <div class="subject-section">
+                <div class="subject-block">{{ current_subject }}</div>
+            </div>
+        {% elif page_type == 'multi' and subjects %}
+            <div class="subject-section">
+                <div class="subjects-buttons">
+                    {% for subject in subjects %}
+                        <button class="subject-btn {% if subject == current_subject %}active{% endif %}"
+                                onclick="selectSubject('{{ subject }}')">{{ subject }}</button>
+                    {% endfor %}
+                </div>
+                {% if current_subject %}
+                    <div class="subject-block">{{ current_subject }}</div>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {% if current_subject and criteria %}
+            <div class="criteria-section">
+                {% for i in range(0, (criteria|length + 1) // 2 * 2, 2) %}
+                    <div class="criteria-row">
+                        <div class="criteria-pair">
+                            {% if i < criteria|length %}
+                                <div class="criterion-wrapper">
+                                    <div class="criteria-container">
+                                        <button class="criteria-btn" onclick="toggleCriterionGrades('{{ i }}', event)">
+                                            {{ criteria[i] }}
+                                        </button>
+                                        <button class="grades-btn {% if saved_grades.get(col_names[i], '') %}selected{% endif %}"
+                                                id="grade-display-{{ i }}"
+                                                onclick="toggleCriterionGrades('{{ i }}', event)">
+                                            {{ saved_grades.get(col_names[i], '') or '-' }}
+                                        </button>
+                                    </div>
+                                    <div class="grades-list" data-grades-index="{{ i }}">
+                                        <button class="grade-item empty" onclick="selectGrade('{{ i }}', '', event)"></button>
+                                        <button class="grade-item" onclick="selectGrade('{{ i }}', '1', event)">1</button>
+                                        <button class="grade-item" onclick="selectGrade('{{ i }}', '2', event)">2</button>
+                                        <button class="grade-item" onclick="selectGrade('{{ i }}', '3', event)">3</button>
+                                        <button class="grade-item" onclick="selectGrade('{{ i }}', '4', event)">4</button>
+                                        <button class="grade-item" onclick="selectGrade('{{ i }}', '5', event)">5</button>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            {% if i+1 < criteria|length %}
+                                <div class="criterion-wrapper">
+                                    <div class="criteria-container">
+                                        <button class="criteria-btn" onclick="toggleCriterionGrades('{{ i+1 }}', event)">
+                                            {{ criteria[i+1] }}
+                                        </button>
+                                        <button class="grades-btn {% if saved_grades.get(col_names[i+1], '') %}selected{% endif %}"
+                                                id="grade-display-{{ i+1 }}"
+                                                onclick="toggleCriterionGrades('{{ i+1 }}', event)">
+                                            {{ saved_grades.get(col_names[i+1], '') or '-' }}
+                                        </button>
+                                    </div>
+                                    <div class="grades-list" data-grades-index="{{ i+1 }}">
+                                        <button class="grade-item empty" onclick="selectGrade('{{ i+1 }}', '', event)"></button>
+                                        <button class="grade-item" onclick="selectGrade('{{ i+1 }}', '1', event)">1</button>
+                                        <button class="grade-item" onclick="selectGrade('{{ i+1 }}', '2', event)">2</button>
+                                        <button class="grade-item" onclick="selectGrade('{{ i+1 }}', '3', event)">3</button>
+                                        <button class="grade-item" onclick="selectGrade('{{ i+1 }}', '4', event)">4</button>
+                                        <button class="grade-item" onclick="selectGrade('{{ i+1 }}', '5', event)">5</button>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% if i == ((criteria|length + 1) // 2 * 2 - 2) %}
+                            <div class="save-section">
+                                <button type="button" class="save-btn" id="saveGradesBtn" onclick="saveGrades()">Сохранить</button>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <script>
+        /* ── Shared navigation ── */
+        function goToProfile() { window.location.href = '{{ url_for("profile") }}'; }
+        function goToTeachers() { window.location.href = '{{ url_for("teachers") }}'; }
+
+        function toggleTeachers() {
+            document.getElementById('teachersList').classList.toggle('show');
+            document.querySelector('.chevron-icon').classList.toggle('rotated');
+        }
+        function selectTeacher(teacher) {
+            document.getElementById('teachersList').classList.remove('show');
+            document.querySelector('.chevron-icon').classList.remove('rotated');
+            window.location.href = '/teachers/' + teacher;
+        }
+
+        {% if mode == 'detail' %}
+        /* ── Detail mode: grades logic ── */
+        const savedGrades  = {{ saved_grades_js | safe }};
+        const colNames     = {{ col_names_js | safe }};
+        let currentGrades  = Object.assign({}, savedGrades);
+        let openGradesIndex = null;
+
+        document.addEventListener('DOMContentLoaded', equalizeCriteriaHeights);
+        window.addEventListener('resize', equalizeCriteriaHeights);
+
+        function equalizeCriteriaHeights() {
+            document.querySelectorAll('.criteria-btn, .grades-btn').forEach(btn => {
+                btn.style.height = 'auto';
+            });
+            document.querySelectorAll('.criteria-pair').forEach(pair => {
+                const btns = pair.querySelectorAll('.criteria-btn');
+                let maxH = 0;
+                btns.forEach(b => { if (b.scrollHeight > maxH) maxH = b.scrollHeight; });
+                btns.forEach(b => {
+                    b.style.height = maxH + 'px';
+                    const gb = b.nextElementSibling;
+                    if (gb) gb.style.height = maxH + 'px';
+                });
+            });
+        }
+
+        document.addEventListener('click', function(event) {
+            if (openGradesIndex !== null &&
+                !event.target.closest('.criteria-container') &&
+                !event.target.closest('.grades-list')) {
+                closeAllGradesLists();
+            }
+        });
+
+        function toggleCriterionGrades(index, event) {
+            event.stopPropagation();
+            event.preventDefault();
+            const targetList = document.querySelector('[data-grades-index="' + index + '"]');
+            if (openGradesIndex === parseInt(index)) {
+                closeAllGradesLists();
+            } else {
+                closeAllGradesLists();
+                if (targetList) {
+                    targetList.classList.add('show');
+                    openGradesIndex = parseInt(index);
+                }
+            }
+        }
+        function closeAllGradesLists() {
+            document.querySelectorAll('.grades-list').forEach(l => l.classList.remove('show'));
+            openGradesIndex = null;
+        }
+        function selectGrade(index, grade, event) {
+            event.stopPropagation();
+            event.preventDefault();
+            const cname = colNames[index];
+            currentGrades[cname] = grade;
+            updateGradeDisplay(index, grade);
+            closeAllGradesLists();
+            checkForChanges();
+        }
+        function updateGradeDisplay(index, grade) {
+            const btn = document.getElementById('grade-display-' + index);
+            if (grade !== '') {
+                btn.textContent = grade;
+                btn.classList.add('selected');
+            } else {
+                btn.textContent = '-';
+                btn.classList.remove('selected');
+            }
+        }
+        function checkForChanges() {
+            const changed = colNames.some(cname =>
+                (currentGrades[cname] || '') !== (savedGrades[cname] || '')
+            );
+            const saveBtn = document.getElementById('saveGradesBtn');
+            if (saveBtn) saveBtn.classList.toggle('active', changed);
+        }
+        function saveGrades() {
+            const grades = {};
+            colNames.forEach(cname => { grades[cname] = currentGrades[cname] || ''; });
+            fetch('{{ url_for("save_grades_route") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    teacher: '{{ display_teacher }}',
+                    subject: '{{ current_subject }}',
+                    grades: grades
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.ok) {
+                    colNames.forEach(cname => { savedGrades[cname] = currentGrades[cname] || ''; });
+                    checkForChanges();
+                }
+            });
+        }
+        function selectSubject(subject) {
+            closeAllGradesLists();
+            window.location.href = '/teachers/{{ display_teacher | replace(" ", "_") }}?subject=' + encodeURIComponent(subject);
+        }
+        {% endif %}
+    </script>
+</body>
+</html>
