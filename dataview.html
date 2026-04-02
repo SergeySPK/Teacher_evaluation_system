@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if selected_db %}{{ selected_db }}{% else %}Базы данных{% endif %}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background-color: #F5F6FA; font-size: 18px; }
+
+        /* ── Header ── */
+        .admin-header {
+            width: 100%; background-color: #FFFFFF; padding: 16px 32px;
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 18px; position: fixed; top: 0; left: 0; right: 0;
+            z-index: 2000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); gap: 12px;
+        }
+        .admin-header-nav-active {
+            color: #232320; font-weight: bold; position: relative;
+            display: inline-block; cursor: pointer; white-space: nowrap;
+            background: transparent; border: none; font-size: 18px;
+        }
+        .admin-header-nav-active::after {
+            content: ""; position: absolute; left: 0; bottom: -3px;
+            width: 100%; height: 2px; background-color: #0D51F8;
+        }
+        .admin-header-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; cursor: pointer; }
+        .admin-header-right .admin-fio { color: #232320; white-space: nowrap; }
+        .admin-header-right img { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; flex-shrink: 0; }
+
+        /* ── Page content ── */
+        .admin-dataview-content { margin: 80px 0 40px 0; padding: 0 20px; font-size: 18px; }
+
+        /* ── DB selector dropdown ── */
+        .admin-db-section { margin-bottom: 20px; position: relative; }
+        .admin-databases-toggle {
+            background-color: #D9D9D9; border: none; border-radius: 27px;
+            padding: 16px 24px; display: flex; align-items: center;
+            justify-content: space-between; cursor: pointer; font-size: 18px;
+            width: {{ databases_btn_width }}px; max-width: calc(100vw - 40px);
+            transition: background 0.2s;
+        }
+        .admin-databases-toggle:hover { background-color: #CCCCCC; }
+        .admin-databases-toggle-text { color: #232320; }
+        .admin-chevron-icon { width: 20px; height: 20px; transition: transform 0.3s; flex-shrink: 0; }
+        .admin-chevron-icon.rotated { transform: rotate(180deg); }
+        .admin-databases-list {
+            background-color: #FFFFFF; border-radius: 12px;
+            max-height: 0; width: {{ databases_btn_width }}px; max-width: calc(100vw - 40px);
+            overflow-y: auto; transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+            opacity: 0; pointer-events: none;
+            {% if selected_db %}
+                position: absolute; top: calc(100% + 12px); left: 0;
+                z-index: 1500; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            {% else %}
+                margin-top: 0;
+            {% endif %}
+        }
+        .admin-databases-list.show {
+            max-height: 800px; opacity: 1; padding: 24px; pointer-events: auto;
+        }
+        .admin-database-item {
+            padding: 12px 16px; color: #232320; font-size: 18px;
+            border-bottom: 1px solid #F0F0F0; background: none; border: none;
+            width: 100%; text-align: left; cursor: pointer; transition: background 0.2s;
+        }
+        .admin-database-item:hover { background-color: #F8F9FF; }
+        .admin-database-item.admin-database-item-selected { color: #0D51F8; font-weight: bold; }
+        .admin-database-item:last-child { border-bottom: none; }
+
+        /* ── Table toolbar ── */
+        .admin-table-toolbar {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 12px; flex-wrap: wrap;
+        }
+        .admin-col-visibility-btn {
+            background: #D9D9D9; border: none; border-radius: 8px;
+            padding: 8px 16px; font-size: 14px; color: #232320;
+            cursor: pointer; transition: background 0.2s; white-space: nowrap;
+        }
+        .admin-col-visibility-btn:hover { background: #CCCCCC; }
+
+        /* ── Column visibility panel ── */
+        .admin-col-panel-wrapper { position: relative; }
+        .admin-col-panel {
+            display: none; position: absolute; top: calc(100% + 6px); left: 0;
+            background: #FFFFFF; border-radius: 12px; padding: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 1400;
+            min-width: 180px; max-height: 320px; overflow-y: auto;
+        }
+        .admin-col-panel.open { display: block; }
+        .admin-col-panel-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 8px; border-radius: 6px; cursor: pointer;
+            font-size: 14px; color: #232320; user-select: none; transition: background 0.15s;
+        }
+        .admin-col-panel-item:hover { background: #F5F6FA; }
+        .admin-col-panel-item input[type=checkbox] { cursor: pointer; width: 15px; height: 15px; }
+        .admin-col-panel-divider { border: none; border-top: 1px solid #E0E0E0; margin: 6px 0; }
+
+        /* ── Table ── */
+        .admin-db-table-wrapper { width: 100%; overflow-x: auto; }
+        .admin-db-table {
+            border-collapse: collapse; font-size: 15px; background-color: #FFFFFF;
+            border-radius: 12px; min-width: 100%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+        }
+        .admin-db-table thead tr { background-color: #D9D9D9; }
+        .admin-db-table th {
+            padding: 0; text-align: left; font-weight: bold;
+            color: #232320; font-size: 15px; white-space: nowrap;
+            border-bottom: 2px solid #C0C0C0; vertical-align: top;
+            user-select: none; position: relative;
+        }
+        .th-inner { display: flex; align-items: center; gap: 4px; padding: 10px 12px 8px 12px; }
+        .th-label { flex: 1; }
+        .th-sort-btn {
+            background: none; border: none; cursor: pointer;
+            padding: 0; font-size: 11px; color: #888; line-height: 1;
+        }
+        .th-sort-btn:hover { color: #0D51F8; }
+        .sort-asc  .th-sort-btn,
+        .sort-desc .th-sort-btn { color: #0D51F8; }
+        .th-filter-btn {
+            background: none; border: none; cursor: pointer;
+            padding: 0 2px; font-size: 13px; color: #888; line-height: 1;
+        }
+        .th-filter-btn:hover { color: #0D51F8; }
+        .th-filter-btn.active { color: #0D51F8; }
+        .admin-db-table td {
+            padding: 9px 12px; color: #232320; font-size: 14px;
+            border-bottom: 1px solid #F0F0F0; white-space: nowrap;
+            max-width: 260px; overflow: hidden; text-overflow: ellipsis;
+        }
+        .admin-db-table tr:last-child td { border-bottom: none; }
+        .admin-db-table tbody tr:hover { background-color: #F8F9FF; }
+        .admin-db-table td.empty-cell { color: #AAAAAA; }
+        .admin-db-empty {
+            color: #888; font-size: 16px; margin-top: 16px; padding: 20px;
+            background: #FFFFFF; border-radius: 12px;
+        }
+
+        /* ── Filter portal ── */
+        .filter-portal {
+            position: fixed; z-index: 3000;
+            background: #FFFFFF; border-radius: 10px; padding: 8px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+            min-width: 170px; max-height: 280px; overflow-y: auto;
+            display: none;
+        }
+        .filter-portal.open { display: block; }
+        .filter-select-all {
+            display: flex; align-items: center; gap: 6px; padding: 5px 6px;
+            border-radius: 5px; cursor: pointer; font-size: 13px;
+            color: #232320; font-weight: bold; user-select: none; transition: background 0.15s;
+        }
+        .filter-select-all:hover { background: #F5F6FA; }
+        .filter-divider { border: none; border-top: 1px solid #E8E8E8; margin: 4px 0; }
+        .filter-item {
+            display: flex; align-items: center; gap: 6px; padding: 5px 6px;
+            border-radius: 5px; cursor: pointer; font-size: 13px;
+            color: #232320; user-select: none; transition: background 0.15s;
+        }
+        .filter-item:hover { background: #F5F6FA; }
+        .filter-item input[type=checkbox],
+        .filter-select-all input[type=checkbox] { cursor: pointer; width: 14px; height: 14px; flex-shrink: 0; }
+        .filter-item-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .admin-header { padding: 14px 20px; }
+            .admin-header-nav-active { font-size: 16px; }
+            .admin-header-right .admin-fio { font-size: 15px; }
+            .admin-header-right { gap: 10px; }
+            .admin-dataview-content { margin: 74px 0 40px 0; padding: 0 16px; }
+            .admin-databases-toggle { font-size: 16px; padding: 14px 18px; }
+            .admin-database-item { font-size: 16px; }
+            .admin-db-table th { font-size: 13px; }
+            .admin-db-table td { font-size: 12px; padding: 8px 10px; }
+        }
+        @media (max-width: 480px) {
+            .admin-header { padding: 12px 14px; gap: 8px; }
+            .admin-header-nav-active { font-size: 14px; }
+            .admin-header-right .admin-fio { font-size: 13px; }
+            .admin-header-right img { width: 26px; height: 26px; }
+            .admin-header-right { gap: 8px; }
+            .admin-dataview-content { margin: 64px 0 40px 0; padding: 0 12px; }
+            .admin-databases-toggle { font-size: 14px; padding: 12px 14px; }
+            .admin-database-item { font-size: 14px; padding: 10px 12px; }
+            .admin-db-table th { font-size: 12px; }
+            .admin-db-table td { font-size: 11px; padding: 7px 8px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="admin-header">
+        <div>
+            <button class="admin-header-nav-active" onclick="goToDatabases()">Базы данных</button>
+        </div>
+        <div class="admin-header-right" onclick="goToProfile()">
+            <span class="admin-fio">{{ fio }}</span>
+            <img src="https://myband.ru/img/noavatar.png" alt="Аккаунт">
+        </div>
+    </header>
+
+    <!-- Портал для фильтров (только в режиме просмотра таблицы) -->
+    {% if selected_db %}
+        <div class="filter-portal" id="filterPortal"></div>
+    {% endif %}
+
+    <div class="admin-dataview-content">
+
+        <!-- Дропдаун выбора базы данных -->
+        <div class="admin-db-section">
+            <button class="admin-databases-toggle" id="adminDbToggle" onclick="toggleDatabases()">
+                <span class="admin-databases-toggle-text">
+                    {% if selected_db %}{{ selected_db }}{% else %}Базы данных{% endif %}
+                </span>
+                <img class="admin-chevron-icon" src="https://cdn1.iconfinder.com/data/icons/education-set-7/512/arrow1-down-512.png" alt="▼">
+            </button>
+            <div class="admin-databases-list" id="adminDbList">
+                {% for db in databases %}
+                    <button class="admin-database-item {% if db.name == selected_db %}admin-database-item-selected{% endif %}"
+                            onclick="selectDatabase('{{ db.type }}', '{{ db.name }}')">
+                        {{ db.name }}
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if selected_db %}
+            {# ─── Table view mode ─── #}
+            {% if headers %}
+                <!-- Панель видимости столбцов -->
+                <div class="admin-table-toolbar">
+                    <div class="admin-col-panel-wrapper">
+                        <button class="admin-col-visibility-btn" onclick="toggleColPanel(event)">Столбцы ▾</button>
+                        <div class="admin-col-panel" id="colPanel">
+                            <label class="admin-col-panel-item">
+                                <input type="checkbox" id="colPanelAllCheck" onchange="toggleAllCols(this.checked)">
+                                <span>Все</span>
+                            </label>
+                            <hr class="admin-col-panel-divider">
+                            {% for h in headers %}
+                                {% set hidden_by_default = (selected_db == 'students' and h == 'password') %}
+                                <label class="admin-col-panel-item">
+                                    <input type="checkbox" class="col-vis-check"
+                                           data-col-idx="{{ loop.index0 }}"
+                                           {% if not hidden_by_default %}checked{% endif %}
+                                           onchange="applyColVisibility()">
+                                    <span>{{ h }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Таблица -->
+                <div class="admin-db-table-wrapper">
+                    <table class="admin-db-table" id="dataTable">
+                        <thead>
+                            <tr id="headerRow">
+                                {% for h in headers %}
+                                    {% set is_password = (selected_db == 'students' and h == 'password') %}
+                                    {% set sortable = not is_password %}
+                                    <th data-col-idx="{{ loop.index0 }}"
+                                        {% if is_password %}style="display:none"{% endif %}>
+                                        <div class="th-inner">
+                                            <span class="th-label">{{ h }}</span>
+                                            {% if sortable %}
+                                                <button class="th-sort-btn"
+                                                        data-col-idx="{{ loop.index0 }}"
+                                                        onclick="sortTable({{ loop.index0 }}, event)"
+                                                        title="Сортировать">⇅</button>
+                                                <button class="th-filter-btn"
+                                                        data-col-idx="{{ loop.index0 }}"
+                                                        onclick="toggleFilter({{ loop.index0 }}, this, event)"
+                                                        title="Фильтр">▼</button>
+                                            {% endif %}
+                                        </div>
+                                    </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            {% for row in rows %}
+                                <tr>
+                                    {% for h in headers %}
+                                        {% set val = row.get(h, '') %}
+                                        {% set is_password = (selected_db == 'students' and h == 'password') %}
+                                        <td data-col-idx="{{ loop.index0 }}"
+                                            data-raw="{{ val if val != None else '' }}"
+                                            class="{{ 'empty-cell' if (val == '' or val == None) else '' }}"
+                                            {% if is_password %}style="display:none"{% endif %}>
+                                            {{ val if (val != None and val != '') else '—' }}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                            {% if not rows %}
+                                <tr>
+                                    <td colspan="{{ headers|length }}" style="text-align:center;color:#888;">Данных нет</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="admin-db-empty">Не удалось загрузить данные или файл не найден.</div>
+            {% endif %}
+        {% endif %}
+
+    </div>
+
+    <script>
+        /* ── Navigation ── */
+        function goToProfile()   { window.location.href = '{{ url_for("admin_profile") }}'; }
+        function goToDatabases() { window.location.href = '{{ url_for("admin_databases") }}'; }
+
+        function toggleDatabases() {
+            document.getElementById('adminDbList').classList.toggle('show');
+            document.querySelector('.admin-chevron-icon').classList.toggle('rotated');
+        }
+        function selectDatabase(type, name) {
+            document.getElementById('adminDbList').classList.remove('show');
+            document.querySelector('.admin-chevron-icon').classList.remove('rotated');
+            window.location.href = '/admin/databases/' + type + '/' + name;
+        }
+
+        {% if selected_db and headers %}
+        /* ── Table logic (only when a DB is selected and has data) ── */
+        const DB_NAME = '{{ selected_db }}';
+        const HEADERS = {{ headers | tojson }};
+
+        function isNumericCol(colIdx) {
+            const h = (HEADERS[colIdx] || '').trim();
+            if (h === 'id') return true;
+            if (DB_NAME === 'teachers_grades' && colIdx >= 6) return true;
+            return false;
+        }
+        function parseNumeric(raw, colIdx) {
+            if (raw === '' || raw === null || raw === undefined) return 0;
+            const h = (HEADERS[colIdx] || '').trim();
+            if (h === 'id') { const n = parseInt(raw, 10); return isNaN(n) ? 0 : n; }
+            const n = parseFloat(raw);
+            return isNaN(n) ? 0 : n;
+        }
+
+        /* ── State ── */
+        let sortColIdx = null;
+        let sortAsc    = true;
+        const filterState = {};
+        let openFilterColIdx = null;
+
+        /* ── Init ── */
+        document.addEventListener('DOMContentLoaded', () => {
+            buildAllFilters();
+            applyColVisibility();
+        });
+
+        /* ── Filters ── */
+        const filterContents = new Map();
+        const filterCache = document.createElement('div');
+        filterCache.style.display = 'none';
+        document.body.appendChild(filterCache);
+
+        function buildAllFilters() {
+            HEADERS.forEach((h, colIdx) => {
+                if (DB_NAME === 'students' && h === 'password') return;
+                buildFilter(colIdx);
+            });
+        }
+
+        function buildFilter(colIdx) {
+            const allRows = Array.from(document.querySelectorAll('#tableBody tr'));
+            const values = new Set();
+            allRows.forEach(tr => {
+                const td = tr.querySelector('td[data-col-idx="' + colIdx + '"]');
+                if (td) values.add(td.dataset.raw);
+            });
+            const sorted = [...values].sort((a, b) => {
+                if (isNumericCol(colIdx)) return parseNumeric(a, colIdx) - parseNumeric(b, colIdx);
+                return a.toLowerCase().localeCompare(b.toLowerCase());
+            });
+            filterState[colIdx] = new Set(sorted);
+
+            const container = document.createElement('div');
+            container.dataset.filterColIdx = colIdx;
+
+            const allLabel = document.createElement('label');
+            allLabel.className = 'filter-select-all';
+            const allCb = document.createElement('input');
+            allCb.type = 'checkbox'; allCb.checked = true;
+            allCb.id = 'filter-all-' + colIdx;
+            allCb.addEventListener('change', e => {
+                const checked = e.target.checked;
+                container.querySelectorAll('.filter-item input').forEach(cb => { cb.checked = checked; });
+                filterState[colIdx] = checked ? new Set(sorted) : new Set();
+                allCb.indeterminate = false;
+                applyFilters();
+                updateFilterBtnState(colIdx, sorted.length);
+            });
+            allLabel.appendChild(allCb);
+            const allSpan = document.createElement('span');
+            allSpan.textContent = 'Все';
+            allLabel.appendChild(allSpan);
+            container.appendChild(allLabel);
+            const divider = document.createElement('hr');
+            divider.className = 'filter-divider';
+            container.appendChild(divider);
+
+            sorted.forEach(val => {
+                const label = document.createElement('label');
+                label.className = 'filter-item';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox'; cb.checked = true; cb.dataset.val = val;
+                cb.addEventListener('change', () => {
+                    if (cb.checked) filterState[colIdx].add(val);
+                    else            filterState[colIdx].delete(val);
+                    allCb.checked      = filterState[colIdx].size === sorted.length;
+                    allCb.indeterminate = filterState[colIdx].size > 0 && filterState[colIdx].size < sorted.length;
+                    applyFilters();
+                    updateFilterBtnState(colIdx, sorted.length);
+                });
+                const span = document.createElement('span');
+                span.className = 'filter-item-label';
+                const displayVal = val === '' ? '(пусто)' : val;
+                span.textContent = displayVal; span.title = displayVal;
+                label.appendChild(cb); label.appendChild(span);
+                container.appendChild(label);
+            });
+
+            filterCache.appendChild(container);
+            filterContents.set(colIdx, { container, sorted });
+        }
+
+        function updateFilterBtnState(colIdx, totalCount) {
+            const btn = document.querySelector('.th-filter-btn[data-col-idx="' + colIdx + '"]');
+            if (!btn) return;
+            btn.classList.toggle('active', filterState[colIdx].size < totalCount);
+        }
+
+        function toggleFilter(colIdx, filterBtn, event) {
+            event.stopPropagation();
+            const portal = document.getElementById('filterPortal');
+            const entry  = filterContents.get(colIdx);
+            if (!entry) return;
+
+            if (openFilterColIdx === colIdx) {
+                filterCache.appendChild(entry.container);
+                portal.classList.remove('open');
+                openFilterColIdx = null;
+                return;
+            }
+            if (openFilterColIdx !== null) {
+                const prev = filterContents.get(openFilterColIdx);
+                if (prev) filterCache.appendChild(prev.container);
+            }
+            portal.innerHTML = '';
+            portal.appendChild(entry.container);
+            openFilterColIdx = colIdx;
+
+            const rect = filterBtn.getBoundingClientRect();
+            const portalW = 180;
+            let left = rect.left + window.scrollX;
+            if (left + portalW > window.innerWidth - 8) left = window.innerWidth - portalW - 8;
+            portal.style.top  = (rect.bottom + 4) + 'px';
+            portal.style.left = left + 'px';
+            portal.classList.add('open');
+        }
+
+        function closeFilterPortal() {
+            if (openFilterColIdx !== null) {
+                const entry = filterContents.get(openFilterColIdx);
+                if (entry) filterCache.appendChild(entry.container);
+            }
+            const portal = document.getElementById('filterPortal');
+            if (portal) { portal.classList.remove('open'); portal.innerHTML = ''; }
+            openFilterColIdx = null;
+        }
+
+        function applyFilters() {
+            Array.from(document.querySelectorAll('#tableBody tr')).forEach(tr => {
+                let visible = true;
+                Object.keys(filterState).forEach(colIdxStr => {
+                    const ci = parseInt(colIdxStr);
+                    const td = tr.querySelector('td[data-col-idx="' + ci + '"]');
+                    if (td && !filterState[ci].has(td.dataset.raw)) visible = false;
+                });
+                tr.style.display = visible ? '' : 'none';
+            });
+        }
+
+        /* ── Sort ── */
+        function sortTable(colIdx, event) {
+            event.stopPropagation();
+            if (sortColIdx === colIdx) { sortAsc = !sortAsc; }
+            else { sortColIdx = colIdx; sortAsc = true; }
+
+            document.querySelectorAll('#headerRow th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                const btn = th.querySelector('.th-sort-btn');
+                if (btn) btn.textContent = '⇅';
+            });
+            const activeTh = document.querySelector('#headerRow th[data-col-idx="' + colIdx + '"]');
+            if (activeTh) {
+                activeTh.classList.add(sortAsc ? 'sort-asc' : 'sort-desc');
+                const btn = activeTh.querySelector('.th-sort-btn');
+                if (btn) btn.textContent = sortAsc ? '▲' : '▼';
+            }
+
+            const tbody = document.getElementById('tableBody');
+            const rows  = Array.from(tbody.querySelectorAll('tr'));
+            const numeric = isNumericCol(colIdx);
+            rows.sort((a, b) => {
+                const tdA = a.querySelector('td[data-col-idx="' + colIdx + '"]');
+                const tdB = b.querySelector('td[data-col-idx="' + colIdx + '"]');
+                if (!tdA || !tdB) return 0;
+                if (numeric) {
+                    return sortAsc
+                        ? parseNumeric(tdA.dataset.raw, colIdx) - parseNumeric(tdB.dataset.raw, colIdx)
+                        : parseNumeric(tdB.dataset.raw, colIdx) - parseNumeric(tdA.dataset.raw, colIdx);
+                }
+                return sortAsc
+                    ? tdA.dataset.raw.toLowerCase().localeCompare(tdB.dataset.raw.toLowerCase())
+                    : tdB.dataset.raw.toLowerCase().localeCompare(tdA.dataset.raw.toLowerCase());
+            });
+            rows.forEach(r => tbody.appendChild(r));
+        }
+
+        /* ── Column visibility ── */
+        function toggleColPanel(event) {
+            event.stopPropagation();
+            document.getElementById('colPanel').classList.toggle('open');
+        }
+        function applyColVisibility() {
+            const checks = document.querySelectorAll('.col-vis-check');
+            checks.forEach(cb => {
+                const idx  = parseInt(cb.dataset.colIdx);
+                const show = cb.checked;
+                const th = document.querySelector('#headerRow th[data-col-idx="' + idx + '"]');
+                if (th) th.style.display = show ? '' : 'none';
+                document.querySelectorAll('#tableBody td[data-col-idx="' + idx + '"]').forEach(td => {
+                    td.style.display = show ? '' : 'none';
+                });
+            });
+            const allChecked  = [...checks].every(cb => cb.checked);
+            const noneChecked = [...checks].every(cb => !cb.checked);
+            const allChk = document.getElementById('colPanelAllCheck');
+            if (allChk) {
+                allChk.checked      = allChecked;
+                allChk.indeterminate = !allChecked && !noneChecked;
+            }
+        }
+        function toggleAllCols(checked) {
+            document.querySelectorAll('.col-vis-check').forEach(cb => { cb.checked = checked; });
+            applyColVisibility();
+        }
+
+        /* ── Close on outside click ── */
+        document.addEventListener('click', e => {
+            if (!e.target.closest('#filterPortal') && !e.target.closest('.th-filter-btn')) closeFilterPortal();
+            if (!e.target.closest('.admin-db-section')) {
+                document.getElementById('adminDbList').classList.remove('show');
+                document.querySelector('.admin-chevron-icon').classList.remove('rotated');
+            }
+            if (!e.target.closest('.admin-col-panel-wrapper')) {
+                const p = document.getElementById('colPanel');
+                if (p) p.classList.remove('open');
+            }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>
