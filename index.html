@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в личный кабинет</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            background-color: #F5F6FA;
+            display: flex;
+        }
+        .login-panel {
+            width: 33.333%; background-color: #FFFFFF; padding: 60px 40px;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .login-title {
+            font-size: 28px; font-weight: bold; color: #000000;
+            margin-bottom: 40px; text-align: center;
+        }
+        .form-group { margin-bottom: 24px; }
+        .form-label { display: block; font-size: 16px; color: #000000; margin-bottom: 8px; }
+        .form-input {
+            width: 100%; padding: 14px 16px; font-size: 16px; color: #000000;
+            background-color: #E8F0FE; border: 1px solid #E8F0FE; border-radius: 6px;
+            outline: none; transition: border-color 0.3s;
+        }
+        .form-input:focus { border-color: #000000; }
+        .error-message {
+            color: #e94b42; font-size: 18px; margin-bottom: 24px;
+            padding: 12px 0; background: transparent;
+        }
+        .login-button {
+            width: 30%; padding: 14px; font-size: 18px; color: #000000;
+            background-color: #FAD84B; border: none; border-radius: 100px;
+            cursor: pointer; transition: background-color 0.3s;
+        }
+        .login-button:hover { background-color: #F0C93B; }
+
+        @media (max-width: 900px) { .login-panel { width: 50%; } }
+        @media (max-width: 600px) {
+            body { height: auto; min-height: 100vh; }
+            .login-panel { width: 100%; padding: 48px 28px; min-height: 100vh; }
+            .login-title { font-size: 22px; margin-bottom: 28px; }
+            .form-label { font-size: 14px; }
+            .form-input { font-size: 14px; padding: 12px 14px; }
+            .error-message { font-size: 15px; }
+            .login-button { font-size: 15px; padding: 12px; }
+        }
+        @media (max-width: 360px) {
+            .login-panel { padding: 36px 18px; }
+            .login-title { font-size: 19px; }
+            .form-input { font-size: 13px; padding: 10px 12px; }
+            .login-button { font-size: 14px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-panel">
+        <h1 class="login-title">Вход в личный кабинет</h1>
+        <form method="POST">
+            <div class="form-group">
+                <label for="login" class="form-label">Логин</label>
+                <input type="text" id="login" name="login" class="form-input"
+                       placeholder="Введите логин"
+                       value="{{ login_value }}" required>
+            </div>
+            <div class="form-group">
+                <label for="password" class="form-label">Пароль</label>
+                <input type="password" id="password" name="password" class="form-input"
+                       placeholder="Введите пароль" required>
+            </div>
+            {% if error %}
+                <div class="error-message">Пользователь не найден.</div>
+            {% endif %}
+            <button type="submit" class="login-button">Войти</button>
+        </form>
+    </div>
+</body>
+</html>
