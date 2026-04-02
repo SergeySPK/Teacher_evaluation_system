@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой профиль</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background-color: #F5F6FA; font-size: 18px; }
+
+        header {
+            width: 100%; background-color: #FFFFFF; padding: 16px 32px;
+            display: flex; align-items: center; justify-content: space-between;
+            font-size: 18px; position: fixed; top: 0; left: 0; right: 0;
+            z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); gap: 12px;
+        }
+        .header-left button {
+            background: transparent; border: none; color: #232320;
+            font-size: 18px; cursor: pointer; white-space: nowrap;
+        }
+        .header-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+        .header-right .profile-fio {
+            color: #232320; font-weight: bold; position: relative;
+            display: inline-block; white-space: nowrap;
+        }
+        .header-right .profile-fio::after {
+            content: ""; position: absolute; left: 0; bottom: -3px;
+            width: 100%; height: 2px; background-color: #0D51F8;
+        }
+        .header-right img { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+
+        .profile-content { max-width: 900px; margin: 80px auto 40px 30px; padding: 0 20px 0 0; font-size: 20px; }
+        .profile-title { font-size: 26px; color: #232320; margin-bottom: 28px; }
+        .profile-block { display: flex; align-items: center; gap: 24px; }
+        .profile-block img { width: 90px; height: 90px; border-radius: 50%; }
+        .profile-info { color: #232320; display: flex; flex-direction: column; justify-content: center; }
+        .profile-info .profile-name { font-weight: bold; font-size: 22px; margin-bottom: 8px; }
+        .profile-info .profile-group { font-weight: bold; font-size: 20px; }
+        .profile-logout-btn {
+            margin-top: 36px; background: transparent; border: none;
+            color: #064DFF; font-size: 18px; cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            header { padding: 14px 20px; }
+            .header-left button { font-size: 16px; }
+            .header-right .profile-fio { font-size: 15px; }
+            .header-right { gap: 10px; }
+            .profile-content { margin: 74px 16px 40px 16px; padding: 0; font-size: 17px; }
+            .profile-title { font-size: 22px; }
+            .profile-info .profile-name { font-size: 19px; }
+            .profile-info .profile-group { font-size: 17px; }
+        }
+        @media (max-width: 480px) {
+            header { padding: 12px 14px; gap: 8px; }
+            .header-left button { font-size: 14px; }
+            .header-right .profile-fio { font-size: 13px; }
+            .header-right img { width: 26px; height: 26px; }
+            .header-right { gap: 8px; }
+            .profile-content { margin: 64px 12px 40px 12px; font-size: 15px; }
+            .profile-title { font-size: 18px; margin-bottom: 20px; }
+            .profile-block img { width: 68px; height: 68px; }
+            .profile-info .profile-name { font-size: 16px; }
+            .profile-info .profile-group { font-size: 15px; }
+            .profile-logout-btn { font-size: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            {% if is_admin %}
+                <button type="button" onclick="goToSection()">Базы данных</button>
+            {% else %}
+                <button type="button" onclick="goToSection()">Преподаватели</button>
+            {% endif %}
+        </div>
+        <div class="header-right">
+            <span class="profile-fio">{{ fio }}</span>
+            <img src="https://myband.ru/img/noavatar.png" alt="Аккаунт">
+        </div>
+    </header>
+
+    <div class="profile-content">
+        <div class="profile-title">Мой профиль</div>
+        <div class="profile-block">
+            <img src="https://myband.ru/img/noavatar.png" alt="Аккаунт">
+            <div class="profile-info">
+                <div class="profile-name">{{ fio }}</div>
+                {% if not is_admin %}
+                    <div class="profile-group">Группа {{ group }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <form method="POST" action="{{ url_for('logout') }}">
+            <button type="submit" class="profile-logout-btn">Выйти</button>
+        </form>
+    </div>
+
+    <script>
+        function goToSection() {
+            {% if is_admin %}
+                window.location.href = '{{ url_for("admin_databases") }}';
+            {% else %}
+                window.location.href = '{{ url_for("teachers") }}';
+            {% endif %}
+        }
+    </script>
+</body>
+</html>
