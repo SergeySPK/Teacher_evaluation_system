@@ -4,10 +4,9 @@ import sqlite3
 import threading
 import json
 import re
-import os
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'
+app.secret_key = 'e83c627bdcb8ba3b5af1a2900ff6031c'
 
 DB_PATH = 'teachers_grades.db'
 DB_LOCK = threading.Lock()
@@ -202,7 +201,7 @@ def load_grades_from_db(user_name, teacher, subject, criteria):
 
 def save_grades_to_db(group, user_name, teacher, subject, grades_dict):
     from datetime import datetime
-    now = datetime.now().strftime('%d:%m:%y %H:%M:%S')
+    now = datetime.now().strftime('%d:%m:%y')
     with DB_LOCK:
         conn = get_db()
         cur = conn.cursor()
@@ -526,7 +525,7 @@ def logout():
     return redirect(url_for('login'))
 
 
-if __name__ == '__main__':
-    print("📁 Загружаю данные...")
-    print(f"✅ Студенты: {len(users_db)}")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
