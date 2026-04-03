@@ -1,16 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-import csv
-import sqlite3
-import threading
-import json
-import re
-import os
+import csv, sqlite3, threading, json, re, os
 
 app = Flask(__name__)
 app.secret_key = 'e83c627bdcb8ba3b5af1a2900ff6031c'
 
 DB_PATH = 'teachers_grades.db'
-DB_LOCK = threading.Lock()
+DB_LOCK = threading.Lock() # Потокобезопасность при работе с БД
 
 
 # ─────────────────────────────────────────────────────────────
@@ -25,14 +20,14 @@ def load_users(filename='students.csv'):
             for row in reader:
                 users.append({
                     'short_user_name': row['short_user_name'].strip(),
-                    'user_name':       row['user_name'].strip(),
-                    'password':        row['password'].strip(),
-                    'group':           row['group'].strip(),
+                    'user_name': row['user_name'].strip(),
+                    'password': row['password'].strip(),
+                    'group': row['group'].strip(),
                 })
     except FileNotFoundError:
-        print(f"⚠️  Файл {filename} не найден.")
+        print(f"Файл {filename} не найден.")
     except Exception as e:
-        print(f"❌ Ошибка чтения CSV: {e}")
+        print(f"Ошибка чтения CSV: {e}")
     return users
 
 
@@ -49,9 +44,9 @@ def load_teachers_for_group(group_id):
                         seen.add(name)
                         teachers_data.append({'teacher': name, 'subject': row['subject'].strip()})
     except FileNotFoundError:
-        print("⚠️  Файл teachers.csv не найден.")
+        print("Файл teachers.csv не найден.")
     except Exception as e:
-        print(f"❌ Ошибка чтения teachers.csv: {e}")
+        print(f"Ошибка чтения teachers.csv: {e}")
     teachers_data.sort(key=lambda x: x['teacher'])
     return teachers_data
 
@@ -91,17 +86,17 @@ def get_teachers_sorted(group_id):
     return teachers
 
 
-def load_criteria():
+def load_criteria(filename='criterion.csv'):
     criteria = []
     try:
-        with open('criterion.csv', 'r', encoding='utf-8') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter=';')
             for row in reader:
                 criteria.append(row['criterion'].strip())
     except FileNotFoundError:
-        print("⚠️ criterion.csv не найден")
+        print(f"{filename} не найден")
     except Exception as e:
-        print(f"❌ Ошибка criterion.csv: {e}")
+        print(f"Ошибка {filename}: {e}")
     return criteria
 
 
@@ -133,13 +128,14 @@ def _get_existing_columns(conn):
 
 
 def _sync_criteria_columns(conn, criteria):
+    """Добавляет столбцы для новых критериев без перезапуска сервера."""
     existing = _get_existing_columns(conn)
     cur = conn.cursor()
     for criterion in criteria:
-        cname = col_name(criterion)
+        cname = col_name(criterion) # безопасное имя столбца
         if cname not in existing:
             cur.execute(f'ALTER TABLE teachers_grades ADD COLUMN "{cname}" TEXT DEFAULT NULL')
-            print(f"  БД: добавлен столбец '{cname}'")
+            print(f"БД: добавлен столбец '{cname}'")
     conn.commit()
 
 
@@ -163,13 +159,14 @@ def init_db():
         if 'time' not in existing:
             conn.execute('ALTER TABLE teachers_grades ADD COLUMN time TEXT DEFAULT NULL')
             conn.commit()
-            print("  БД: добавлен столбец 'time'")
-        _sync_criteria_columns(conn, criteria)
+            print("БД: добавлен столбец 'time'")
+        _sync_criteria_columns(conn, criteria) # авто-миграция критериев
         conn.close()
-    print(f"✅ БД инициализирована: {DB_PATH}")
+    print(f"БД инициализирована: {DB_PATH}")
 
 
 def ensure_criteria_columns():
+    """Вызывается при каждом запросе страницы критериев."""
     criteria = load_criteria()
     with DB_LOCK:
         conn = get_db()
@@ -245,8 +242,9 @@ ADMINS = {
     'Admin': '123456',
 }
 
+# Файлы данных
 ADMIN_CSV_FILES = ['students', 'teachers', 'criterion']
-ADMIN_DB_FILES  = ['teachers_grades']
+ADMIN_DB_FILES = ['teachers_grades']
 
 
 def get_csv_data(name):
@@ -296,7 +294,7 @@ def get_db_table_data(name):
 
 def _get_admin_dbs():
     csv_dbs = [{'name': n, 'type': 'csv'} for n in ADMIN_CSV_FILES if os.path.exists(f'{n}.csv')]
-    db_dbs  = [{'name': n, 'type': 'db'}  for n in ADMIN_DB_FILES  if os.path.exists(f'{n}.db')]
+    db_dbs = [{'name': n, 'type': 'db'} for n in ADMIN_DB_FILES if os.path.exists(f'{n}.db')]
     return csv_dbs + db_dbs
 
 
@@ -317,22 +315,24 @@ def login():
     error = False
     login_value = ''
     if request.method == 'POST':
-        login_data    = request.form['login'].strip()
+        login_data = request.form['login'].strip()
         password_data = request.form['password'].strip()
-        login_value   = login_data
+        login_value = login_data
 
+        # Проверка администратора
         if login_data in ADMINS and ADMINS[login_data] == password_data:
-            session['fio']       = login_data
+            session['fio'] = login_data
             session['logged_in'] = True
-            session['is_admin']  = True
+            session['is_admin'] = True
             return redirect(url_for('admin_profile'))
 
+        # Проверка студентов
         for user in users_db:
             if user['short_user_name'] == login_data and user['password'] == password_data:
-                session['fio']       = user['user_name']
-                session['group']     = user['group']
+                session['fio'] = user['user_name']
+                session['group'] = user['group']
                 session['logged_in'] = True
-                session['is_admin']  = False
+                session['is_admin'] = False
                 return redirect(url_for('profile'))
         error = True
 
@@ -358,9 +358,9 @@ def teachers():
     if session.get('is_admin'):
         return redirect(url_for('admin_databases'))
 
-    group_id      = session.get('group', '')
+    group_id = session.get('group', '')
     teachers_list = load_teachers_for_group(group_id)
-    max_length    = 120
+    max_length = 120
     if teachers_list:
         max_length = max(len(t['teacher']) for t in teachers_list) * 12 + 40
 
@@ -386,10 +386,10 @@ def teachers_detail(teacher_name):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
 
-    group_id         = session.get('group', '')
+    group_id = session.get('group', '')
     teacher_subjects = get_teacher_subjects(group_id)
-    display_teacher  = teacher_name.replace('_', ' ')
-    subjects         = teacher_subjects.get(display_teacher, [])
+    display_teacher = teacher_name.replace('_', ' ')
+    subjects = teacher_subjects.get(display_teacher, [])
 
     current_subject = ''
     page_type = 'single' if len(subjects) == 1 else 'multi'
@@ -398,8 +398,8 @@ def teachers_detail(teacher_name):
     elif request.args.get('subject') and len(subjects) > 1:
         current_subject = request.args.get('subject')
 
-    all_teachers   = get_teachers_sorted(group_id)
-    criteria_list  = ensure_criteria_columns()
+    all_teachers = get_teachers_sorted(group_id)
+    criteria_list = ensure_criteria_columns()
     col_names_list = [col_name(c) for c in criteria_list]
 
     saved_grades = {}
@@ -441,14 +441,15 @@ def save_grades_route():
 
     teacher = data.get('teacher', '').strip()
     subject = data.get('subject', '').strip()
-    grades  = data.get('grades', {})
+    grades = data.get('grades', {})
 
     if not teacher or not subject:
         return jsonify({'ok': False, 'error': 'missing teacher or subject'}), 400
 
+    # Принимаем только допустимые оценки (1–5)
     criteria_list = load_criteria()
-    valid_cols    = {col_name(c) for c in criteria_list}
-    clean_grades  = {
+    valid_cols = {col_name(c) for c in criteria_list}
+    clean_grades = {
         k: (v if v in ('1', '2', '3', '4', '5') else None)
         for k, v in grades.items()
         if k in valid_cols
@@ -479,7 +480,7 @@ def admin_databases():
     if not session.get('logged_in') or not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    all_dbs    = _get_admin_dbs()
+    all_dbs = _get_admin_dbs()
     max_length = 180
     if all_dbs:
         max_length = max(len(d['name']) for d in all_dbs) * 12 + 40
@@ -499,7 +500,7 @@ def admin_db_view(db_type, db_name):
     if not session.get('logged_in') or not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    all_dbs    = _get_admin_dbs()
+    all_dbs = _get_admin_dbs()
     max_length = 180
     if all_dbs:
         max_length = max(len(d['name']) for d in all_dbs) * 12 + 40
