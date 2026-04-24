@@ -199,7 +199,7 @@
         </div>
         <div class="admin-header-right" onclick="goToProfile()">
             <span class="admin-fio">{{ fio }}</span>
-            <img src="https://myband.ru/img/noavatar.png" alt="Аккаунт">
+            <img src="{{ url_for('static', filename='profile_ico/profile_default_ico.png') }}" alt="Аккаунт">
         </div>
     </header>
 
@@ -216,7 +216,7 @@
                 <span class="admin-databases-toggle-text">
                     {% if selected_db %}{{ selected_db }}{% else %}Базы данных{% endif %}
                 </span>
-                <img class="admin-chevron-icon" src="https://cdn1.iconfinder.com/data/icons/education-set-7/512/arrow1-down-512.png" alt="▼">
+                <img class="admin-chevron-icon" src="{{ url_for('static', filename='list_arrow.png') }}" alt="▼">
             </button>
             <div class="admin-databases-list" id="adminDbList">
                 {% for db in databases %}
