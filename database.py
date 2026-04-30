@@ -30,7 +30,8 @@ def is_valid_grade(value) -> bool:
 # CSV: студенты
 
 def load_users(filename: str = 'students.csv') -> list:
-    """Читает CSV-файл студентов. Возвращает список словарей: short_user_name, user_name, password, group."""
+    """Читает CSV-файл студентов.
+    Возвращает список словарей: short_user_name, user_name, password, group."""
     users = []
     try:
         with open(filename, 'r', encoding='utf-8') as f:
@@ -228,8 +229,10 @@ def load_grades_from_db(user_name: str, teacher: str, subject: str, criteria: li
     return result
 
 
-def save_grades_to_db(group: str, user_name: str, teacher: str, subject: str, grades_dict: dict, db_path: str = DB_PATH) -> None:
-    """Сохраняет или обновляет оценки в БД. Пустая строка в grades_dict → NULL в базе. Всегда обновляет поле time."""
+def save_grades_to_db(group: str, user_name: str, teacher: str,
+                      subject: str, grades_dict: dict, db_path: str = DB_PATH) -> None:
+    """Сохраняет или обновляет оценки в БД.
+    Пустая строка в grades_dict → NULL в базе. Всегда обновляет поле time."""
     if not teacher or not subject:
         raise ValueError("teacher и subject не могут быть пустыми")
 
