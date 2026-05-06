@@ -1,8 +1,8 @@
-import csv, sqlite3, threading, re
+import csv, sqlitecloud, threading, re, os
 from datetime import datetime
 
 
-DB_PATH = 'teachers_grades.db'
+SQLITECLOUD_URL = os.environ.get('SQLITECLOUD_CONNECTION_STRING', '')
 DB_LOCK = threading.Lock()
 
 
@@ -140,21 +140,21 @@ def load_criteria(filename: str = 'criterion.csv') -> list:
 
 # SQLITE: подключение и схема
 
-def get_db(db_path: str = DB_PATH) -> sqlite3.Connection:
+def get_db() -> sqlitecloud.Connection:
     """Открывает и возвращает соединение с SQLite."""
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+    conn = sqlitecloud.connect(SQLITECLOUD_URL)
+    conn.row_factory = sqlitecloud.Row
     return conn
 
 
-def _get_existing_columns(conn: sqlite3.Connection) -> set:
+def _get_existing_columns(conn: sqlitecloud.Connection) -> set:
     """Возвращает множество имён существующих столбцов таблицы teachers_grades."""
     cur = conn.cursor()
     cur.execute("PRAGMA table_info(teachers_grades)")
     return {row['name'] for row in cur.fetchall()}
 
 
-def _sync_criteria_columns(conn: sqlite3.Connection, criteria: list) -> None:
+def _sync_criteria_columns(conn: sqlitecloud.Connection, criteria: list) -> None:
     """Добавляет новые столбцы критериев в БД (без удаления старых)."""
     existing = _get_existing_columns(conn)
     cur = conn.cursor()
@@ -166,11 +166,11 @@ def _sync_criteria_columns(conn: sqlite3.Connection, criteria: list) -> None:
     conn.commit()
 
 
-def init_db(db_path: str = DB_PATH) -> None:
+def init_db() -> None:
     """Создаёт таблицу при первом запуске и синхронизирует столбцы критериев."""
     criteria = load_criteria()
     with DB_LOCK:
-        conn = get_db(db_path)
+        conn = get_db()
         conn.execute('''
             CREATE TABLE IF NOT EXISTS teachers_grades (
                 id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -182,14 +182,9 @@ def init_db(db_path: str = DB_PATH) -> None:
                 UNIQUE(user_name, teacher, subject)
             )
         ''')
-        conn.commit()
-        existing = _get_existing_columns(conn)
-        if 'time' not in existing:
-            conn.execute('ALTER TABLE teachers_grades ADD COLUMN time TEXT DEFAULT NULL')
-            conn.commit()
         _sync_criteria_columns(conn, criteria)
         conn.close()
-    print(f"БД инициализирована: {db_path}")
+    print("БД инициализирована")
 
 
 def ensure_criteria_columns() -> list:
@@ -204,10 +199,10 @@ def ensure_criteria_columns() -> list:
 
 # SQLITE: оценки
 
-def load_grades_from_db(user_name: str, teacher: str, subject: str, criteria: list, db_path: str = DB_PATH) -> dict:
+def load_grades_from_db(user_name: str, teacher: str, subject: str, criteria: list) -> dict:
     """Загружает оценки из БД для связки user_name + teacher + subject.Возвращает dict {col_name: value_or_empty_string}."""
     with DB_LOCK:
-        conn = get_db(db_path)
+        conn = get_db()
         cur = conn.cursor()
         cur.execute(
             'SELECT * FROM teachers_grades WHERE user_name=? AND teacher=? AND subject=?',
@@ -229,7 +224,7 @@ def load_grades_from_db(user_name: str, teacher: str, subject: str, criteria: li
 
 
 def save_grades_to_db(group: str, user_name: str, teacher: str,
-                      subject: str, grades_dict: dict, db_path: str = DB_PATH) -> None:
+                      subject: str, grades_dict: dict) -> None:
     """Сохраняет или обновляет оценки в БД.
     Пустая строка в grades_dict → NULL в базе. Всегда обновляет поле time."""
     if not teacher or not subject:
@@ -237,7 +232,7 @@ def save_grades_to_db(group: str, user_name: str, teacher: str,
 
     now = datetime.now().strftime('%d:%m:%y')
     with DB_LOCK:
-        conn = get_db(db_path)
+        conn = get_db()
         cur = conn.cursor()
 
         cur.execute(
@@ -277,8 +272,8 @@ def get_db_table_data(name: str) -> tuple:
     """Читает таблицу из SQLite-файла name.db. Возвращает (headers, rows)."""
     db_file = f'{name}.db'
     try:
-        conn = sqlite3.connect(db_file)
-        conn.row_factory = sqlite3.Row
+        conn = sqlitecloud.connect(db_file)
+        conn.row_factory = sqlitecloud.Row
         cur = conn.cursor()
         cur.execute(
             "SELECT name FROM sqlite_master "
