@@ -18,7 +18,15 @@ ADMIN_DB_FILES = ['teachers_grades']
 def _get_admin_dbs() -> list:
     """Возвращает список доступных источников данных для административной панели."""
     csv_dbs = [{'name': n, 'type': 'csv'} for n in ADMIN_CSV_FILES if os.path.exists(f'{n}.csv')]
-    db_dbs = [{'name': n, 'type': 'db'} for n in ADMIN_DB_FILES if os.path.exists(f'{n}.db')]
+
+    # Для БД: teachers_grades всегда доступен (облачная БД)
+    db_dbs = []
+    for db_name in ADMIN_DB_FILES:
+        if db_name == 'teachers_grades':
+            db_dbs.append({'name': db_name, 'type': 'db'})
+        elif os.path.exists(f'{db_name}.db'):
+            db_dbs.append({'name': db_name, 'type': 'db'})
+
     return csv_dbs + db_dbs
 
 
