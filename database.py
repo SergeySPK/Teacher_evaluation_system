@@ -270,9 +270,8 @@ def save_grades_to_db(group: str, user_name: str, teacher: str,
 
 def get_db_table_data(name: str) -> tuple:
     """Читает таблицу из SQLite-файла name.db. Возвращает (headers, rows)."""
-    db_file = f'{name}.db'
     try:
-        conn = sqlitecloud.connect(db_file)
+        conn = get_db()
         conn.row_factory = sqlitecloud.Row
         cur = conn.cursor()
         cur.execute(
@@ -297,7 +296,7 @@ def get_db_table_data(name: str) -> tuple:
         conn.close()
         return headers, rows
     except Exception as e:
-        print(f'Ошибка чтения {db_file}: {e}')
+        print('Ошибка чтения')
         return [], []
 
 
