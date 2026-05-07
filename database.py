@@ -230,7 +230,7 @@ def save_grades_to_db(group: str, user_name: str, teacher: str,
     if not teacher or not subject:
         raise ValueError("teacher и subject не могут быть пустыми")
 
-    now = datetime.now().strftime('%d:%m:%y')
+    now = datetime.now().strftime('%d.%m.%y')
     with DB_LOCK:
         conn = get_db()
         cur = conn.cursor()
