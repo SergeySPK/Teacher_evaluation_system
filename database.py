@@ -30,7 +30,8 @@ def is_valid_grade(value) -> bool:
 # CSV: студенты
 
 def load_users(filename: str = 'students.csv') -> list:
-    """Читает CSV-файл студентов. Возвращает список словарей: short_user_name, user_name, password, group."""
+    """Читает CSV-файл студентов.
+    Возвращает список словарей: short_user_name, user_name, password, group."""
     users = []
     try:
         with open(filename, 'r', encoding='utf-8') as f:
