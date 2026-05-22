@@ -183,46 +183,33 @@ def admin_profile():
 def admin_databases():
     if not session.get('logged_in') or not session.get('is_admin'):
         return redirect(url_for('login'))
-
     all_dbs = _get_admin_dbs()
     max_length = 180
     if all_dbs:
         max_length = max(len(d['name']) for d in all_dbs) * 12 + 40
-
-    return render_template('dataview.html',
-                           fio=session.get('fio'),
-                           databases=all_dbs,
-                           databases_btn_width=max_length,
-                           selected_db=None,
-                           current_type=None,
-                           headers=[],
-                           rows=[])
+    return render_template('dataview.html', fio=session.get('fio'),
+                           databases=all_dbs, databases_btn_width=max_length,
+                           selected_db=None, current_type=None,
+                           headers=[], rows=[])
 
 
 @app.route('/admin/databases/<db_type>/<db_name>')
 def admin_db_view(db_type, db_name):
     if not session.get('logged_in') or not session.get('is_admin'):
         return redirect(url_for('login'))
-
     all_dbs = _get_admin_dbs()
     max_length = 180
     if all_dbs:
         max_length = max(len(d['name']) for d in all_dbs) * 12 + 40
-
     headers, rows = [], []
     if db_type == 'csv' and db_name in ADMIN_CSV_FILES:
         headers, rows = get_csv_data(db_name)
     elif db_type == 'db' and db_name in ADMIN_DB_FILES:
         headers, rows = get_db_table_data(db_name)
-
-    return render_template('dataview.html',
-                           fio=session.get('fio'),
-                           databases=all_dbs,
-                           databases_btn_width=max_length,
-                           selected_db=db_name,
-                           current_type=db_type,
-                           headers=headers,
-                           rows=rows)
+    return render_template('dataview.html', fio=session.get('fio'),
+                           databases=all_dbs, databases_btn_width=max_length,
+                           selected_db=db_name, current_type=db_type,
+                           headers=headers, rows=rows)
 
 
 @app.route('/logout', methods=['POST'])
