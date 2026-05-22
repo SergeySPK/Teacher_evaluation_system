@@ -151,33 +151,22 @@ def teachers_detail(teacher_name):
 def save_grades_route():
     if not session.get('logged_in'):
         return jsonify({'ok': False, 'error': 'not logged in'}), 401
-
     data = request.get_json()
     if not data:
         return jsonify({'ok': False, 'error': 'no data'}), 400
-
     teacher = data.get('teacher', '').strip()
     subject = data.get('subject', '').strip()
     grades = data.get('grades', {})
-
     if not teacher or not subject:
         return jsonify({'ok': False, 'error': 'missing teacher or subject'}), 400
-
     criteria_list = load_criteria()
     valid_cols = {col_name(c) for c in criteria_list}
-    clean_grades = {
-        k: (v if v in ('1', '2', '3', '4', '5') else None)
-        for k, v in grades.items()
-        if k in valid_cols
+    clean_grades = {k: (v if v in ('1', '2', '3', '4', '5') else None)
+                    for k, v in grades.items()
+                    if k in valid_cols
     }
-
-    save_grades_to_db(
-        group=session.get('group'),
-        user_name=session.get('fio'),
-        teacher=teacher,
-        subject=subject,
-        grades_dict=clean_grades
-    )
+    save_grades_to_db(group=session.get('group'), user_name=session.get('fio'),
+                      teacher=teacher, subject=subject, grades_dict=clean_grades)
     return jsonify({'ok': True})
 
 
