@@ -227,7 +227,7 @@ def admin_db_view(db_type, db_name):
     all_dbs = _get_admin_dbs()
     max_length = 180
     if all_dbs:
-        max_length = max(len(d['name']) for d in all_dbs) * 12 + 40
+        max_length = max(len(d['name']) for d in all_dbs) * 12 + 55
 
     headers, rows = [], []
     if db_type == 'csv' and db_name in ADMIN_CSV_FILES:
