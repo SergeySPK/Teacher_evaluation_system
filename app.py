@@ -207,7 +207,7 @@ def admin_databases():
     all_dbs = _get_admin_dbs()
     max_length = 180
     if all_dbs:
-        max_length = max(len(d['name']) for d in all_dbs) * 12 + 40
+        max_length = max(len(d['name']) for d in all_dbs) * 12 + 55
 
     return render_template('dataview.html',
                            fio=session.get('fio'),
