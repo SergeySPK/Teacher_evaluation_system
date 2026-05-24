@@ -199,7 +199,7 @@
         </div>
         <div class="admin-header-right" onclick="goToProfile()">
             <span class="admin-fio">{{ fio }}</span>
-            <img src="{{ url_for('static', filename='profile_ico/profile_default_ico.png') }}" alt="Аккаунт">
+            <img src="https://myband.ru/img/noavatar.png" alt="Аккаунт">
         </div>
     </header>
 
@@ -213,15 +213,16 @@
         <!-- Дропдаун выбора базы данных -->
         <div class="admin-db-section">
             <button class="admin-databases-toggle" id="adminDbToggle" onclick="toggleDatabases()">
-                <span class="admin-databases-toggle-text">
+                <span class="admin-databases-toggle-text" id="adminDbToggleText">
                     {% if selected_db %}{{ selected_db }}{% else %}Базы данных{% endif %}
                 </span>
-                <img class="admin-chevron-icon" src="{{ url_for('static', filename='list_arrow.png') }}" alt="▼">
+                <img class="admin-chevron-icon" src="https://cdn1.iconfinder.com/data/icons/education-set-7/512/arrow1-down-512.png" alt="▼">
             </button>
             <div class="admin-databases-list" id="adminDbList">
                 {% for db in databases %}
                     <button class="admin-database-item {% if db.name == selected_db %}admin-database-item-selected{% endif %}"
-                            onclick="selectDatabase('{{ db.type }}', '{{ db.name }}')">
+                            onclick="selectDatabase('{{ db.type }}', '{{ db.name }}')"
+                            data-raw-name="{{ db.name }}">
                         {{ db.name }}
                     </button>
                 {% endfor %}
@@ -248,7 +249,7 @@
                                            data-col-idx="{{ loop.index0 }}"
                                            {% if not hidden_by_default %}checked{% endif %}
                                            onchange="applyColVisibility()">
-                                    <span>{{ h }}</span>
+                                    <span data-raw="{{ h }}">{{ h }}</span>
                                 </label>
                             {% endfor %}
                         </div>
@@ -266,7 +267,7 @@
                                     <th data-col-idx="{{ loop.index0 }}"
                                         {% if is_password %}style="display:none"{% endif %}>
                                         <div class="th-inner">
-                                            <span class="th-label">{{ h }}</span>
+                                            <span class="th-label" data-raw="{{ h }}">{{ h }}</span>
                                             {% if sortable %}
                                                 <button class="th-sort-btn"
                                                         data-col-idx="{{ loop.index0 }}"
@@ -313,6 +314,11 @@
     </div>
 
     <script>
+        function fmtLabel(raw) {
+            var s = raw.replace(/_/g, ' ');
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
         /* ── Navigation ── */
         function goToProfile()   { window.location.href = '{{ url_for("admin_profile") }}'; }
         function goToDatabases() { window.location.href = '{{ url_for("admin_databases") }}'; }
@@ -356,7 +362,31 @@
         document.addEventListener('DOMContentLoaded', () => {
             buildAllFilters();
             applyColVisibility();
+            applyFmtLabels();
         });
+
+        function applyFmtLabels() {
+            var toggleText = document.getElementById('adminDbToggleText');
+            if (toggleText) {
+                var raw = toggleText.textContent.trim();
+                if (raw && raw !== 'Базы данных') {
+                    toggleText.textContent = fmtLabel(raw);
+                }
+            }
+
+            document.querySelectorAll('.admin-database-item[data-raw-name]').forEach(function(btn) {
+                var raw = btn.dataset.rawName;
+                btn.textContent = fmtLabel(raw);
+            });
+
+            document.querySelectorAll('.th-label[data-raw]').forEach(function(span) {
+                span.textContent = fmtLabel(span.dataset.raw);
+            });
+
+            document.querySelectorAll('#colPanel span[data-raw]').forEach(function(span) {
+                span.textContent = fmtLabel(span.dataset.raw);
+            });
+        }
 
         /* ── Filters ── */
         const filterContents = new Map();
