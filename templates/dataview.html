@@ -314,6 +314,7 @@
     </div>
 
     <script>
+        /* ── Label formatter: underscores → spaces, capitalise first word ── */
         function fmtLabel(raw) {
             var s = raw.replace(/_/g, ' ');
             return s.charAt(0).toUpperCase() + s.slice(1);
@@ -366,6 +367,7 @@
         });
 
         function applyFmtLabels() {
+            // 1. Toggle button text (selected table name)
             var toggleText = document.getElementById('adminDbToggleText');
             if (toggleText) {
                 var raw = toggleText.textContent.trim();
@@ -374,15 +376,18 @@
                 }
             }
 
+            // 2. List items in the dropdown
             document.querySelectorAll('.admin-database-item[data-raw-name]').forEach(function(btn) {
                 var raw = btn.dataset.rawName;
                 btn.textContent = fmtLabel(raw);
             });
 
+            // 3. Table header labels (th-label spans)
             document.querySelectorAll('.th-label[data-raw]').forEach(function(span) {
                 span.textContent = fmtLabel(span.dataset.raw);
             });
 
+            // 4. Column panel labels (spans with data-raw inside col-panel)
             document.querySelectorAll('#colPanel span[data-raw]').forEach(function(span) {
                 span.textContent = fmtLabel(span.dataset.raw);
             });
@@ -600,6 +605,18 @@
             }
         });
         {% endif %}
+    </script>
+    <script>
+        // Форматирование дропдауна — всегда, на любой странице admin
+        document.addEventListener('DOMContentLoaded', function() {
+            // Кнопка toggle
+            var t = document.getElementById('adminDbToggleText');
+            if (t) { var r = t.textContent.trim(); if (r && r !== 'Базы данных') t.textContent = fmtLabel(r); }
+            // Элементы списка
+            document.querySelectorAll('.admin-database-item[data-raw-name]').forEach(function(btn) {
+                btn.textContent = fmtLabel(btn.dataset.rawName);
+            });
+        });
     </script>
 </body>
 </html>
