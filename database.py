@@ -30,19 +30,15 @@ def is_valid_grade(value) -> bool:
 # CSV: студенты
 
 def load_users(filename: str = 'students.csv') -> list:
-    """Читает CSV-файл студентов.
-    Возвращает список словарей: short_user_name, user_name, password, group."""
+    """Читает CSV-файл студентов. Возвращает список словарей: short_user_name, user_name, password, group."""
     users = []
     try:
         with open(filename, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter=';')
             for row in reader:
                 users.append({
-                    'short_user_name': row['short_user_name'].strip(),
-                    'user_name': row['user_name'].strip(),
-                    'password': row['password'].strip(),
-                    'group': row['group'].strip(),
-                })
+                    'short_user_name': row['short_user_name'].strip(), 'user_name': row['user_name'].strip(),
+                    'password': row['password'].strip(), 'group': row['group'].strip()})
     except FileNotFoundError:
         print(f"Файл {filename} не найден.")
     except Exception as e:
@@ -74,9 +70,7 @@ def load_teachers_for_group(group_id: str, filename: str = 'teachers.csv') -> li
                     if name not in seen:
                         seen.add(name)
                         teachers_data.append({
-                            'teacher': name,
-                            'subject': row['subject'].strip()
-                        })
+                            'teacher': name, 'subject': row['subject'].strip()})
     except FileNotFoundError:
         print(f"Файл {filename} не найден.")
     except Exception as e:
